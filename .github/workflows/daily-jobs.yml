@@ -1,0 +1,45 @@
+
+name: Daily International Job Search
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 2 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-job-search
+  cancel-in-progress: false
+
+jobs:
+  collect-jobs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r international_job_tracker/requirements.txt
+
+      - name: Collect international jobs
+        working-directory: international_job_tracker
+        run: python collect.py
+
+      - name: Save collected jobs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f international_job_tracker/data/
+          if ! git diff --cached --quiet; then
+            git commit -m "Update daily job listings"
+            git push
+          fi
